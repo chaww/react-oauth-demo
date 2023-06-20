@@ -137,7 +137,7 @@ export default function Google() {
 
 
   return (
-    <>
+    <div className='view-table'>
       <h3>Google authorizationData</h3>
       <table>
         <tbody>
@@ -182,6 +182,6 @@ export default function Google() {
           ))}
         </tbody>
       </table>
-    </>
+    </div>
   )
 }
