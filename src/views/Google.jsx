@@ -95,19 +95,11 @@ export default function Google() {
       token: refreshToken,
     };
 
-    return new Promise((resolve) => {
-      fetch(endpoint, {
-        method: 'POST',
-        body: new URLSearchParams(requestBody)
-      })
-        .then(response => response.json())
-        .then(data => {
-          resolve(data)
-        })
-        .catch(error => {
-          console.error('Error:', error);
-        });
+    return fetch(endpoint, {
+      method: 'POST',
+      body: new URLSearchParams(requestBody)
     })
+
   }
 
 
@@ -132,7 +124,12 @@ export default function Google() {
       console.log('tokenDataAfterRefresh', tokenDataAfterRefresh)
 
       await new Promise(resolve => setTimeout(resolve, 500));
-      await revokeToken(tokenData.refresh_token)
+      const revokeResponse = await revokeToken(tokenData.refresh_token)
+      if (revokeResponse.ok) {
+        console.log('Refresh token revoked successfully.');
+      } else {
+        console.error('Failed to revoke refresh token.');
+      }
 
     })()
 
