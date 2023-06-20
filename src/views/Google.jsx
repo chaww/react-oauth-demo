@@ -66,7 +66,6 @@ export default function Google() {
       grant_type: 'refresh_token',
 
     };
-    console.log(requestBody)
 
     return new Promise((resolve) => {
       fetch(tokenEndpoint, {
@@ -86,9 +85,29 @@ export default function Google() {
     })
   }
 
-  const logout = (accessToken) => {
-    let endpoint = new URL("https://oauth2.googleapis.com/revoke");
-    endpoint.searchParams.set("access_token", accessToken);
+  const revokeToken = (refreshToken) => {
+
+    const endpoint = 'https://accounts.google.com/o/oauth2/revoke';
+
+    const requestBody = {
+      client_id: googleConfig.client_id,
+      client_secret: googleConfig.client_secret,
+      token: refreshToken,
+    };
+
+    return new Promise((resolve) => {
+      fetch(endpoint, {
+        method: 'POST',
+        body: new URLSearchParams(requestBody)
+      })
+        .then(response => response.json())
+        .then(data => {
+          resolve(data)
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    })
   }
 
 
@@ -111,7 +130,10 @@ export default function Google() {
       const tokenDataAfterRefresh = await fetchRefreshToken(tokenData)
       setTokenDataAfterRefresh(tokenDataAfterRefresh)
       console.log('tokenDataAfterRefresh', tokenDataAfterRefresh)
-      
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await revokeToken(tokenData.refresh_token)
+
     })()
 
   }, [])
