@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import jwtDecode from 'jwt-decode';
+import { googleConfig } from '../appConfig';
 
 export default function Google() {
 
-  const [accessToken, setAccessToken] = useState("");
-  const [userInfo, setUserInfo] = useState({});
+  const [authorizationData, setAuthorizationData] = useState({});
+  const [tokenData, setTokenData] = useState({});
+  const [idTokenDecoded, setIdTokenDecoded] = useState({});
+  const [tokenDataAfterRefresh, setTokenDataAfterRefresh] = useState({});
 
   const getAuthorizationData = () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -18,15 +21,15 @@ export default function Google() {
     return authorizationData
   }
 
-  const fetchAccessToken = (authorizationCode) => {
+  const fetchToken = (authorizationCode) => {
 
     if (!authorizationCode) return
 
     const tokenEndpoint = 'https://oauth2.googleapis.com/token'
 
     const requestBody = {
-      client_id: '277508119822-7oggtss40ulq7l01ajr9kbkk2o2nag69.apps.googleusercontent.com',
-      client_secret: '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',
+      client_id: googleConfig.client_id,
+      client_secret: googleConfig.client_secret,
       code: authorizationCode,
       grant_type: 'authorization_code',
       redirect_uri: 'http://localhost:5173/google',
@@ -52,6 +55,37 @@ export default function Google() {
   }
 
 
+  const fetchRefreshToken = (data) => {
+
+    const tokenEndpoint = 'https://oauth2.googleapis.com/token'
+
+    const requestBody = {
+      client_id: googleConfig.client_id,
+      client_secret: googleConfig.client_secret,
+      refresh_token: data.refresh_token,
+      grant_type: 'refresh_token',
+
+    };
+    console.log(requestBody)
+
+    return new Promise((resolve) => {
+      fetch(tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams(requestBody)
+      })
+        .then(response => response.json())
+        .then(data => {
+          resolve(data)
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    })
+  }
+
   const logout = (accessToken) => {
     let endpoint = new URL("https://oauth2.googleapis.com/revoke");
     endpoint.searchParams.set("access_token", accessToken);
@@ -61,52 +95,74 @@ export default function Google() {
   useEffect(() => {
     (async () => {
       const authorizationData = getAuthorizationData()
-      localStorage.setItem('authorizationData', authorizationData)
+      // localStorage.setItem('authorizationData', authorizationData)
+      setAuthorizationData(authorizationData)
       console.log('authorizationData', authorizationData)
 
-      fetchAccessToken(authorizationData.code)
-      const tokenData = await fetchAccessToken(authorizationData.code)
+      const tokenData = await fetchToken(authorizationData.code)
+      setTokenData(tokenData)
       console.log('tokenData', tokenData)
 
+      const idTokenDecoded = jwtDecode(tokenData.id_token)
+      setIdTokenDecoded(idTokenDecoded)
+      console.log('id_token Decode', idTokenDecoded)
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const tokenDataAfterRefresh = await fetchRefreshToken(tokenData)
+      setTokenDataAfterRefresh(tokenDataAfterRefresh)
+      console.log('tokenDataAfterRefresh', tokenDataAfterRefresh)
+      
     })()
 
   }, [])
 
 
-
-
-
   return (
     <>
-      <h2>Google Authorization Code</h2>
+      <h3>Google authorizationData</h3>
       <table>
         <tbody>
-          {Object.keys(userInfo).map((key) => (
+          {Object.keys(authorizationData).map((key) => (
             <tr key={key}>
               <td>{key}</td>
-              <td>{`${userInfo[key]}`}</td>
+              <td>{`${authorizationData[key]}`}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      {userInfo.email && <button onClick={logout}>Logout</button>}
+      <h3>Google tokenData</h3>
+      <table>
+        <tbody>
+          {Object.keys(tokenData).map((key) => (
+            <tr key={key}>
+              <td>{key}</td>
+              <td>{`${tokenData[key]}`}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h3>Google idTokenDecoded</h3>
+      <table>
+        <tbody>
+          {Object.keys(idTokenDecoded).map((key) => (
+            <tr key={key}>
+              <td>{key}</td>
+              <td>{`${idTokenDecoded[key]}`}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h3>Google tokenDataAfterRefresh</h3>
+      <table>
+        <tbody>
+          {Object.keys(tokenDataAfterRefresh).map((key) => (
+            <tr key={key}>
+              <td>{key}</td>
+              <td>{`${tokenDataAfterRefresh[key]}`}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </>
   )
 }
-
-
-/*
-
-https://accounts.google.com/o/oauth2/auth/oauthchooseaccount?operation=login&
-state=google-%7Chttps%3A%2F%2Fiamgique.medium.com%2Foauth-2-0-%E0%B8%81%E0%B8%B1%E0%B8%9A-grant-types-%E0%B8%97%E0%B8%B1%E0%B9%89%E0%B8%87-6-e9c82ca978b%3Fsource%3Dlogin--------------------------global_nav-----------%7Clogin&
-access_type=online&
-client_id=216296035834-k1k6qe060s2tp2a2jam4ljdcms00sttg.apps.googleusercontent.com&
-redirect_uri=https%3A%2F%2Fmedium.com%2Fm%2Fcallback%2Fgoogle&
-response_type=id_token%20token&
-scope=email%20openid%20profile&
-nonce=4554c2334d19dc611e35fb6ba5be76246f1a1cbaa086b354b9aafac8464b3620&
-service=lso&
-o2v=1&
-flowName=GeneralOAuthFlow
-
-*/
