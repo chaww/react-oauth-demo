@@ -1,46 +1,86 @@
 import { useEffect, useState } from 'react'
+import jwtDecode from 'jwt-decode';
 
 export default function Google() {
 
   const [accessToken, setAccessToken] = useState("");
   const [userInfo, setUserInfo] = useState({});
 
-  useEffect(() => {
-    const fragment = window.location.hash;
-    const cleanFragment = fragment.slice(1);
-    const urlParams = new URLSearchParams(cleanFragment);
+  const getAuthorizationData = () => {
+    const urlParams = new URLSearchParams(window.location.search);
 
-    const hashData = {}
+    const authorizationData = {}
 
     for (const param of urlParams.entries()) {
       const [key, value] = param;
-      hashData[key] = value
+      authorizationData[key] = value
     }
+    return authorizationData
+  }
 
-    if (hashData.access_token) {
-      console.log("access_token = " + hashData.access_token)
-      setAccessToken(hashData.access_token)
+  const fetchAccessToken = (authorizationCode) => {
 
-      let endpoint = new URL("https://www.googleapis.com/oauth2/v3/userinfo");
-      endpoint.searchParams.set("access_token", hashData.access_token);
-      fetch(endpoint).then(resp => resp.json()).then((respData) => {
-        if (respData.email) {
-          setUserInfo(respData)
-        }
+    if (!authorizationCode) return
+
+    const tokenEndpoint = 'https://oauth2.googleapis.com/token'
+
+    const requestBody = {
+      client_id: '277508119822-7oggtss40ulq7l01ajr9kbkk2o2nag69.apps.googleusercontent.com',
+      client_secret: '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',
+      code: authorizationCode,
+      grant_type: 'authorization_code',
+      redirect_uri: 'http://localhost:5173/google',
+    };
+
+    return new Promise((resolve) => {
+      fetch(tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams(requestBody)
       })
+        .then(response => response.json())
+        .then(data => {
+          resolve(data)
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    })
 
-    } else return
+  }
+
+
+  const logout = (accessToken) => {
+    let endpoint = new URL("https://oauth2.googleapis.com/revoke");
+    endpoint.searchParams.set("access_token", accessToken);
+  }
+
+
+  useEffect(() => {
+    (async () => {
+      const authorizationData = getAuthorizationData()
+      localStorage.setItem('authorizationData', authorizationData)
+      console.log('authorizationData', authorizationData)
+
+      fetchAccessToken(authorizationData.code)
+      const tokenData = await fetchAccessToken(authorizationData.code)
+      console.log('tokenData', tokenData)
+
+    })()
+
   }, [])
+
+
+
+
 
   return (
     <>
-      <h2>Google User Info</h2>
+      <h2>Google Authorization Code</h2>
       <table>
         <tbody>
-          <tr>
-            <td>access_token</td>
-            <td>{accessToken}</td>
-          </tr>
           {Object.keys(userInfo).map((key) => (
             <tr key={key}>
               <td>{key}</td>
@@ -49,7 +89,24 @@ export default function Google() {
           ))}
         </tbody>
       </table>
-
+      {userInfo.email && <button onClick={logout}>Logout</button>}
     </>
   )
 }
+
+
+/*
+
+https://accounts.google.com/o/oauth2/auth/oauthchooseaccount?operation=login&
+state=google-%7Chttps%3A%2F%2Fiamgique.medium.com%2Foauth-2-0-%E0%B8%81%E0%B8%B1%E0%B8%9A-grant-types-%E0%B8%97%E0%B8%B1%E0%B9%89%E0%B8%87-6-e9c82ca978b%3Fsource%3Dlogin--------------------------global_nav-----------%7Clogin&
+access_type=online&
+client_id=216296035834-k1k6qe060s2tp2a2jam4ljdcms00sttg.apps.googleusercontent.com&
+redirect_uri=https%3A%2F%2Fmedium.com%2Fm%2Fcallback%2Fgoogle&
+response_type=id_token%20token&
+scope=email%20openid%20profile&
+nonce=4554c2334d19dc611e35fb6ba5be76246f1a1cbaa086b354b9aafac8464b3620&
+service=lso&
+o2v=1&
+flowName=GeneralOAuthFlow
+
+*/

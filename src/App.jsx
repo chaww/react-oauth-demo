@@ -16,8 +16,8 @@ function Routing() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/google" element={<Google />} />
+        <Route path='/' element={<Home />} />
+        <Route path='/google' element={<Google />} />
       </Routes>
     </>
   )
@@ -26,19 +26,19 @@ function Routing() {
 
 function Home() {
 
-  const googleLogin = () => {
-    let endpoint = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-    endpoint.searchParams.set("client_id", "277508119822-7oggtss40ulq7l01ajr9kbkk2o2nag69.apps.googleusercontent.com");
-    endpoint.searchParams.set("redirect_uri", "http://localhost:5173/google");
-    endpoint.searchParams.set("scope", "email openid profile");
-    endpoint.searchParams.set("response_type", "token");
-    endpoint.searchParams.set("state", "send-data-here");
+  const redirectToLogin = () => {
+    const endpoint = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    endpoint.searchParams.set('client_id', '277508119822-7oggtss40ulq7l01ajr9kbkk2o2nag69.apps.googleusercontent.com');
+    endpoint.searchParams.set('redirect_uri', 'http://localhost:5173/google');
+    endpoint.searchParams.set('scope', 'email openid profile');
+    endpoint.searchParams.set('response_type', 'code');
+    endpoint.searchParams.set('state', '[csrf_token]');
     window.location.href = endpoint
   }
 
   return (
     <>
-      <button onClick={googleLogin}>Google Login</button>
+      <button onClick={redirectToLogin}>Google Login</button>
     </>
   )
 }
